@@ -196,6 +196,8 @@ export default function Cam() {
   }, [setCameraReady, setCameraError, setHandDetected, setHandPosition]);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -205,14 +207,24 @@ export default function Cam() {
             facingMode: "user",
           },
         });
+
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+
         streamRef.current = stream;
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
+          if (cancelled) return;
           processFrame();
         }
       } catch (err) {
+        if (cancelled) return;
+        // Ignore play() interruption during Strict Mode remount
+        if (err instanceof DOMException && err.name === "AbortError") return;
         setCameraError(
           `Camera access denied: ${err instanceof Error ? err.message : String(err)}`
         );
@@ -222,8 +234,10 @@ export default function Cam() {
     startCamera();
 
     return () => {
+      cancelled = true;
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
       }
     };
   }, [processFrame, setCameraError]);
