@@ -71,6 +71,7 @@ interface GameState {
   noteSpeed: number;
   judgementCounts: JudgementCounts;
   lastJudgement: Judgement | null;
+  inferenceLatencyMs: number;
 
   cameraReady: boolean;
   cameraError: string | null;
@@ -86,6 +87,7 @@ interface GameState {
   resetGame: () => void;
   setCameraReady: (ready: boolean) => void;
   setCameraError: (error: string | null) => void;
+  setInferenceLatency: (latencyMs: number) => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -106,6 +108,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   noteSpeed: 3,
   judgementCounts: { ...EMPTY_COUNTS },
   lastJudgement: null,
+  inferenceLatencyMs: 0,
 
   cameraReady: false,
   cameraError: null,
@@ -132,6 +135,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       maxCombo: 0,
       judgementCounts: { ...EMPTY_COUNTS },
       lastJudgement: null,
+      inferenceLatencyMs: 0,
       phase: state.cameraReady ? "ready" : "boot",
     })),
 
@@ -150,6 +154,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         maxCombo: 0,
         judgementCounts: { ...EMPTY_COUNTS },
         lastJudgement: null,
+        inferenceLatencyMs: 0,
         notes: state.chart.notes.map((note) => ({ ...note, status: "pending" })),
       };
     }),
@@ -233,6 +238,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       maxCombo: 0,
       judgementCounts: { ...EMPTY_COUNTS },
       lastJudgement: null,
+      inferenceLatencyMs: 0,
     })),
 
   setCameraReady: (ready) =>
@@ -252,6 +258,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       cameraReady: error ? false : state.cameraReady,
       phase: error && state.phase !== "playing" ? "boot" : state.phase,
     })),
+
+  setInferenceLatency: (latencyMs) =>
+    set({
+      inferenceLatencyMs: Math.max(0, Math.round(latencyMs)),
+    }),
 }));
 
 export function getPendingLaneNote(

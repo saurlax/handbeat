@@ -16,6 +16,7 @@ export default function Hud() {
   const currentTimeMs = useGameStore((s) => s.currentTimeMs);
   const lastJudgement = useGameStore((s) => s.lastJudgement);
   const judgementCounts = useGameStore((s) => s.judgementCounts);
+  const inferenceLatencyMs = useGameStore((s) => s.inferenceLatencyMs);
 
   const progress = useMemo(() => {
     if (!chart) {
@@ -58,6 +59,9 @@ export default function Hud() {
         </div>
         <div className="rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/50">
           phase: {phase}
+        </div>
+        <div className="rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/60">
+          inference: {inferenceLatencyMs} ms
         </div>
       </div>
 

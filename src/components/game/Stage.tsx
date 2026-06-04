@@ -17,6 +17,9 @@ export default function Stage() {
   const initializeGame = useGameStore((state) => state.initializeGame);
   const startGame = useGameStore((state) => state.startGame);
   const resetGame = useGameStore((state) => state.resetGame);
+  const score = useGameStore((state) => state.score);
+  const maxCombo = useGameStore((state) => state.maxCombo);
+  const judgementCounts = useGameStore((state) => state.judgementCounts);
 
   useEffect(() => {
     if (!chart) {
@@ -61,9 +64,38 @@ export default function Stage() {
             ) : phase === "finished" ? (
               <>
                 <h1 className="text-3xl font-semibold text-neon-cyan">Run complete</h1>
-                <p className="mt-3 text-sm text-white/65">
-                  重新开始再跑一遍谱面，继续调手感和判定。
-                </p>
+                <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 px-5 py-4 text-left">
+                  <div className="text-xs uppercase tracking-[0.2em] text-white/40">Result</div>
+                  <div className="mt-3 font-mono text-3xl font-bold text-neon-cyan tabular-nums">
+                    {score.toLocaleString()}
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-white/75">
+                    <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                      <div className="text-xs uppercase tracking-[0.18em] text-white/40">Perfect</div>
+                      <div className="mt-1 font-mono text-xl tabular-nums text-neon-lime">
+                        {judgementCounts.perfect}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                      <div className="text-xs uppercase tracking-[0.18em] text-white/40">Good</div>
+                      <div className="mt-1 font-mono text-xl tabular-nums text-neon-cyan">
+                        {judgementCounts.good}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                      <div className="text-xs uppercase tracking-[0.18em] text-white/40">Miss</div>
+                      <div className="mt-1 font-mono text-xl tabular-nums text-red-400">
+                        {judgementCounts.miss}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                      <div className="text-xs uppercase tracking-[0.18em] text-white/40">Max Combo</div>
+                      <div className="mt-1 font-mono text-xl tabular-nums text-neon-magenta">
+                        {maxCombo}x
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <button
                   type="button"
                   onClick={resetGame}

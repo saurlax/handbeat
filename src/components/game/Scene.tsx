@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { useGameStore, type Hand, type NoteInstance } from "@/stores/gameStore";
+import { useGameStore, type Hand, type NoteInstance, getPendingLaneNote } from "@/stores/gameStore";
 
 const LANES = 5;
 const LANE_WIDTH = 5;
@@ -54,12 +54,9 @@ function FeedbackBurst({
 
 export default function Scene() {
   const phase = useGameStore((s) => s.phase);
-  const indexTipX = useGameStore((s) => s.indexTipX);
-  const indexTipY = useGameStore((s) => s.indexTipY);
   const hands = useGameStore((s) => s.hands);
   const notes = useGameStore((s) => s.notes);
   const currentTimeMs = useGameStore((s) => s.currentTimeMs);
-  const chart = useGameStore((s) => s.chart);
   const lastJudgement = useGameStore((s) => s.lastJudgement);
   const tickGame = useGameStore((s) => s.tickGame);
   const registerHit = useGameStore((s) => s.registerHit);
@@ -99,7 +96,7 @@ export default function Scene() {
 
   useFrame(() => {
     const now = performance.now();
-    if (handsRef.current.length > 0 && now - seenAtRef.current > 140) {
+    if (handsRef.current.length > 0 && now - seenAtRef.current > 180) {
       handsRef.current = [];
     }
 
@@ -111,6 +108,7 @@ export default function Scene() {
 
     const state = useGameStore.getState();
     const time = state.currentTimeMs;
+    const claimedNotes = new Set<string>();
 
     for (const note of state.notes) {
       if (note.status === "pending" && time - note.hitTimeMs > MISS_WINDOW_MS) {
@@ -118,20 +116,17 @@ export default function Scene() {
       }
     }
 
-    const primaryHand = handsRef.current[0];
-    if (primaryHand) {
-      const lane = getLaneFromX(indexTipX);
-      const candidate = state.notes.find(
-        (note) =>
-          note.status === "pending" &&
-          note.lane === lane &&
-          Math.abs(note.hitTimeMs - time) <= GOOD_WINDOW_MS
-      );
+    for (const hand of handsRef.current) {
+      const lane = getLaneFromX(hand.indexTipX);
+      const candidate = getPendingLaneNote(state.notes, lane, time, GOOD_WINDOW_MS);
 
-      if (candidate) {
-        const delta = Math.abs(candidate.hitTimeMs - time);
-        registerHit(candidate.id, delta <= PERFECT_WINDOW_MS ? "perfect" : "good");
+      if (!candidate || claimedNotes.has(candidate.id)) {
+        continue;
       }
+
+      claimedNotes.add(candidate.id);
+      const delta = Math.abs(candidate.hitTimeMs - time);
+      registerHit(candidate.id, delta <= PERFECT_WINDOW_MS ? "perfect" : "good");
     }
 
     const refreshed = useGameStore.getState();
@@ -209,8 +204,8 @@ export default function Scene() {
 
       <mesh
         position={[
-          handsRef.current[0] ? (indexTipX - 0.5) * LANE_WIDTH : 0,
-          handsRef.current[0] ? (1 - indexTipY) * 4 - 2 : 0,
+          handsRef.current[0] ? (handsRef.current[0].indexTipX - 0.5) * LANE_WIDTH : 0,
+          handsRef.current[0] ? (1 - handsRef.current[0].indexTipY) * 4 - 2 : 0,
           0.6,
         ]}
         visible={Boolean(handsRef.current[0])}
