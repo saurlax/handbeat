@@ -36,9 +36,8 @@ export default function Cam() {
   const seenAtRef   = useRef(0);
   const handsRef    = useRef<Hand[]>([]);
 
-  const { setHandPosition, setHandDetected, setHands, setCameraReady, setCameraError } = useGameStore();
+  const { setHands, setCameraReady, setCameraError } = useGameStore();
 
-  // ── draw skeleton on preview canvas ──────────────────────────
   const draw = useCallback((ctx: CanvasRenderingContext2D, w: number, h: number) => {
     for (const hand of handsRef.current) {
       const c = PALETTE[hand.handedness] ?? PALETTE.Unknown;
@@ -62,7 +61,6 @@ export default function Cam() {
     }
   }, []);
 
-  // ── frame loop: grab canvas snapshot → post to worker ────────
   const tick = useCallback(() => {
     if (!runningRef.current) return;
 
@@ -100,7 +98,6 @@ export default function Cam() {
     rafRef.current = requestAnimationFrame(tick);
   }, [draw]);
 
-  // ── start / stop camera stream ───────────────────────────────
   const stopCamera = useCallback(() => {
     runningRef.current = false;
     cancelAnimationFrame(rafRef.current);
@@ -109,8 +106,8 @@ export default function Cam() {
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
     handsRef.current = [];
-    setHandDetected(false);
-  }, [setHandDetected]);
+    setHands([]);
+  }, [setHands]);
 
   const startCamera = useCallback(async () => {
     try {
@@ -129,7 +126,6 @@ export default function Cam() {
     }
   }, [tick, setCameraError]);
 
-  // ── 1. Worker: create once, destroy on unmount ───────────────
   useEffect(() => {
     const w = new Worker(
       new URL("@/workers/tracker.worker.ts", import.meta.url),
@@ -140,19 +136,21 @@ export default function Cam() {
     w.onmessage = (e) => {
       const { type } = e.data;
       if (type === "ready") {
+        setCameraError(null);
         setCameraReady(true);
       } else if (type === "result") {
         busyRef.current = false;
-        const { x, y, z, detected, hands } = e.data;
-        setHandDetected(detected);
+        const { detected, hands } = e.data;
         setHands(hands);
         if (detected) {
           seenAtRef.current = performance.now();
           handsRef.current = hands;
-          setHandPosition(1 - x, y, z);
+        } else {
+          handsRef.current = [];
         }
       } else if (type === "error") {
         busyRef.current = false;
+        setCameraReady(false);
         setCameraError(e.data.error);
       }
     };
@@ -164,22 +162,19 @@ export default function Cam() {
       workerRef.current = null;
       busyRef.current = false;
     };
-  }, [setCameraReady, setCameraError, setHandDetected, setHandPosition]);
+  }, [setCameraReady, setCameraError, setHands]);
 
-  // ── 2. Camera: start on mount, stop on unmount ───────────────
   useEffect(() => {
     startCamera();
     return () => stopCamera();
   }, [startCamera, stopCamera]);
 
-  // ── 3. Visibility: pause/resume camera only ──────────────────
   useEffect(() => {
     const onVis = () => document.hidden ? stopCamera() : startCamera();
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [startCamera, stopCamera]);
 
-  // ── render ───────────────────────────────────────────────────
   return (
     <div className="absolute bottom-4 right-4 z-20 w-48 rounded-lg overflow-hidden border-2 border-neon-cyan/30 shadow-lg shadow-neon-cyan/10">
       <video ref={videoRef} className="hidden" playsInline muted />

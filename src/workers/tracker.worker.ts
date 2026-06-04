@@ -1,6 +1,8 @@
 // Web Worker: Hand Tracking via MediaPipe
 // Receives ImageBitmap from main thread, runs inference, returns landmarks.
 
+const TASKS_VISION_VERSION = "0.10.35";
+
 let detector: any = null;
 let ready = false;
 
@@ -20,7 +22,7 @@ async function initDetector() {
     );
 
     const vision = await FilesetResolver.forVisionTasks(
-      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm"
+      `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VISION_VERSION}/wasm`
     );
 
     detector = await HandLandmarker.createFromOptions(vision, {
@@ -53,19 +55,16 @@ self.onmessage = async (event: MessageEvent) => {
 
     case "detect":
       if (!ready || !detector) {
-        console.warn("[worker] detect ignored: ready=%s detector=%s", ready, !!detector);
         return;
       }
 
       const bitmap = event.data.bitmap as ImageBitmap;
       if (!bitmap) {
-        console.warn("[worker] detect ignored: no bitmap");
         return;
       }
 
       try {
         const results = detector.detectForVideo(bitmap, timestamp);
-        console.log("[worker] detectForVideo result: landmarks=%d", results.landmarks?.length ?? 0);
 
         if (results.landmarks && results.landmarks.length > 0) {
           const hands: Hand[] = results.landmarks.map((points: Point[], index: number) => {
